@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.CallableStatement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -40,6 +41,7 @@ public class SQL_DB implements DBInterface {
 		if (conn != null) {
 			try {
 				conn.close();
+				conn=null;
 			} catch(SQLException e) {}
 		}
 	}
@@ -116,15 +118,20 @@ public class SQL_DB implements DBInterface {
 
 	public Account lookupAccount(String username, String accountName) throws BankSQLException {
 		try {
-			PreparedStatement stmt = conn.prepareStatement("select accountname,username,balance,id from bank_accounts where username=? and accountname=?");
+			PreparedStatement stmt = conn.prepareStatement(
+					"select "
+					+ "bank_accounts.balance, "
+					+ "bank_accounts.accountid from bank_accounts, bank_users "
+					+ "where bank_users.username=? and bank_accounts.accountname=? "
+					+ "and bank_users.id=bank_accounts.userid");
 			stmt.setString(1, username);
 			stmt.setString(2, accountName);
 			ResultSet results = stmt.executeQuery();
 			if (!results.next()) {
 				return null;
 			}
-			double balance = results.getDouble(3);
-			int id = results.getInt(4);
+			double balance = results.getDouble(1);
+			int id = results.getInt(2);
 			return new Account(id,balance,accountName,username);
 		} catch (SQLException e) {
 			throw new BankSQLException("Error looking up account",e);
@@ -146,26 +153,40 @@ public class SQL_DB implements DBInterface {
 		} catch (SQLException e) {
 			throw new BankSQLException("Error getting users",e);
 		}
+		Collections.sort(users);
 		return users;
 	}
 
 	public void updateUser(String username, String password, boolean isSuperUser)
 			throws BankSQLException {
-		// TODO Auto-generated method stub
+		try {
+			PreparedStatement stmt = conn.prepareStatement("update bank_users set password_hash=?, issuperuser=? where username=?");
+			stmt.setString(1,password);
+			stmt.setInt(2, isSuperUser?1:0);
+			stmt.setString(3, username);
+			stmt.execute();
+		} catch (SQLException e) {
+			throw new BankSQLException("Error updating user",e);
+		}
 		
 	}
 
 	public void deleteUser(String username) throws BankSQLException {
-		// TODO Auto-generated method stub
+		try {
+			PreparedStatement stmt = conn.prepareStatement("delete from bank_users where username=?");
+			stmt.setString(1, username);
+			stmt.execute();
+		} catch (SQLException e) {
+			throw new BankSQLException("Error deleting user",e);
+		}
 		
 	}
 
 	public void createAccount(String username, String accountName) throws BankSQLException {
 		try {
-			PreparedStatement stmt = conn.prepareStatement("insert into bank_accounts accountName, userName, balance, id values (?,?,?,account_id_sequence.nextval)");
+			CallableStatement stmt = conn.prepareCall("CALL add_account(?,?)");
 			stmt.setString(1, accountName);
 			stmt.setString(2, username);
-			stmt.setDouble(3, 0);
 			stmt.execute();
 		} catch (SQLException e) {
 			throw new BankSQLException("Could not create account",e);
@@ -173,36 +194,117 @@ public class SQL_DB implements DBInterface {
 	}
 
 	public void deleteAccount(String username, String accountName) throws BankSQLException {
-		// TODO Auto-generated method stub
+		try {
+			PreparedStatement stmt = conn.prepareStatement("delete from bank_accounts where accountName=? and userid in (select id from bank_users where username=?)");
+			stmt.setString(1, accountName);
+			stmt.setString(2, username);
+			stmt.execute();
+		} catch (SQLException e) {
+			throw new BankSQLException("Could not delete account",e);
+		}
 		
 	}
 
 	public void deposit(String username, String accountName, double amt) throws BankSQLException {
-		// TODO Auto-generated method stub
+		try {
+			PreparedStatement stmt = conn.prepareStatement("select balance,accountid from bank_accounts where accountName=? and userid in (select id from bank_users where username=?)");
+			stmt.setString(1, accountName);
+			stmt.setString(2, username);
+			ResultSet results = stmt.executeQuery();
+			if (results.next()) {
+				double oldBalance = results.getDouble(1);
+				int accountId = results.getInt(2);
+				stmt = conn.prepareStatement("update bank_accounts set balance=? where accountid=?");
+				stmt.setDouble(1, oldBalance+amt);
+				stmt.setInt(2, accountId);
+				stmt.execute();
+			} else {
+				throw new BankSQLException("Error getting balance");
+			}
+		} catch (SQLException e) {
+			throw new BankSQLException("Error making deposit",e);
+		}
 		
 	}
 
 	public List<Account> getAccounts() throws BankSQLException {
-		// TODO Auto-generated method stub
-		return null;
+		List<Account> accounts = new ArrayList<Account>();
+		try {
+			PreparedStatement stmt = conn.prepareStatement(
+					  "select "
+					+ "bank_accounts.accountname,"
+					+ "bank_users.username,"
+					+ "bank_accounts.balance,"
+					+ "bank_accounts.accountid from bank_accounts, bank_users where bank_accounts.userid=bank_users.id");
+			ResultSet results = stmt.executeQuery();
+			while (results.next()) {
+				String accountName = results.getString(1);
+				String username = results.getString(2);
+				double balance = results.getDouble(3);
+				int id = results.getInt(4);
+				accounts.add(new Account(id,balance,accountName,username));
+			}
+		} catch (SQLException e) {
+				throw new BankSQLException("Error getting accounts",e);
+		}
+		Collections.sort(accounts);
+		return accounts;
 	}
 
 	public List<AccountBalance> getAccountBalances() throws BankSQLException {
-		// TODO Auto-generated method stub
-		return null;
+		List<AccountBalance> accounts = new ArrayList<AccountBalance>();
+		try {
+			PreparedStatement stmt = conn.prepareStatement(
+					  "select "
+					+ "bank_accounts.accountname,"
+					+ "bank_users.username,"
+					+ "bank_accounts.balance,"
+					+ "bank_accounts.accountid from bank_accounts, bank_users where bank_accounts.userid=bank_users.id");
+			ResultSet results = stmt.executeQuery();
+			while (results.next()) {
+				String accountName = results.getString(1);
+				String username = results.getString(2);
+				double balance = results.getDouble(3);
+				int id = results.getInt(4);
+				accounts.add(new AccountBalance(accountName,balance,username));
+			}
+		} catch (SQLException e) {
+				throw new BankSQLException("Error getting accounts",e);
+		}
+		Collections.sort(accounts);
+		return accounts;
 	}
 
 	public List<AccountBalance> getAccountMyBalances(String username) throws BankSQLException {
-		// TODO Auto-generated method stub
-		return null;
+		List<AccountBalance> accounts = new ArrayList<AccountBalance>();
+		try {
+			PreparedStatement stmt = conn.prepareStatement(
+					  "select "
+					+ "bank_accounts.accountname,"
+					+ "bank_users.username,"
+					+ "bank_accounts.balance,"
+					+ "bank_accounts.accountid from bank_accounts, bank_users where bank_users.username=? and bank_accounts.userid=bank_users.id");
+			stmt.setString(1, username);
+			ResultSet results = stmt.executeQuery();
+			
+			while (results.next()) {
+				String accountName = results.getString(1);
+				double balance = results.getDouble(3);
+				int id = results.getInt(4);
+				accounts.add(new AccountBalance(accountName,balance,username));
+			}
+		} catch (SQLException e) {
+				throw new BankSQLException("Error getting accounts",e);
+		}
+		Collections.sort(accounts);
+		return accounts;		
 	}
 
-	@Override
 	public void truncateTable() throws BankSQLException {
 		try {
 			Statement stmt = conn.createStatement();
+			stmt.execute("truncate table bank_accounts");
 			stmt.execute("truncate table bank_users");
-			System.out.println("truncated");
 		} catch (SQLException e) {
 			throw new RuntimeException("Error truncating table",e);
 		}

@@ -14,6 +14,11 @@ public class ExpectedOutput {
 		this.msg=msg;
 	}
 	
+	@Override
+	public String toString() {
+		return "ExpectedOutput [isSuccess=" + isSuccess + ", isFailure=" + isFailure + ", msg=" + msg + "]";
+	}
+
 	public boolean isMatch(DebugMessage msgIn) {
 		if (this.isSuccess && msgIn.isSuccess()) {
 			return true;
@@ -23,7 +28,11 @@ public class ExpectedOutput {
 			return true;
 		}
 		
-		return this.msg.equals(msgIn.getMessage());
+		if (this.msg == null) {
+			return msgIn.getMessage()==null;
+		} else {
+			return this.msg.equals(msgIn.getMessage());
+		}
 	}
 
 	public boolean isSucess() {

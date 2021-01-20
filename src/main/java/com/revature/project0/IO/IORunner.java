@@ -157,7 +157,7 @@ public class IORunner {
 					viewAllAccounts();
 				}
 			} catch (IOException e) {
-				userio.sendFatalException(e);
+				userio.printException(e);
 				break;
 			} catch (BankStateException e) {
 				userio.printException(e);

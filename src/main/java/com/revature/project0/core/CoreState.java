@@ -109,7 +109,12 @@ public class CoreState {
 			if (this.dbinterface.lookupAccount(this.user.getUsername(), accountName) == null) {
 				throw new BankStateException("No such account");
 			}
-			this.dbinterface.deleteAccount(this.user.getUsername(), accountName);
+			Account acct = this.dbinterface.lookupAccount(this.user.getUsername(), accountName);
+			if (acct.testBalance(0)) {
+				this.dbinterface.deleteAccount(this.user.getUsername(), accountName);
+			} else {
+				throw new BankStateException("Account not empty");
+			}
 		} finally {
 			this.dbinterface.endTransaction();
 		}

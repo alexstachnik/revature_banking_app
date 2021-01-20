@@ -8,11 +8,11 @@ import java.util.Scanner;
 public class StringIO implements UserIO {
 	
 	private Scanner scanner;
-	private boolean throwOnError;
+	private boolean debug;
 	private Deque<DebugMessage> output;
 	
-	public StringIO(boolean throwOnError, String commands) {
-		this.throwOnError=throwOnError;
+	public StringIO(boolean debug, String commands) {
+		this.debug=debug;
 		scanner = new Scanner(commands);
 		this.output = new LinkedList<DebugMessage>();
 	}
@@ -40,8 +40,9 @@ public class StringIO implements UserIO {
 		msg.setError(true);
 		output.addLast(msg);
 		
-		if (throwOnError) {
-			throw new RuntimeException("Error",e);
+		if (debug) {
+			System.err.println(msg);
+			//throw new RuntimeException("Error",e);
 		}
 	}
 	
@@ -51,6 +52,9 @@ public class StringIO implements UserIO {
 		msg.setError(true);
 		output.addLast(msg);
 		
+		if (debug) {
+			System.err.println(msg);
+		}
 		throw new RuntimeException("Error",e);
 	}
 
@@ -63,12 +67,20 @@ public class StringIO implements UserIO {
 		msg.setMessage(line);
 		msg.setSuccess(true);
 		this.output.addLast(msg);
+		
+		if (debug) {
+			System.err.println(msg);
+		}
 	}
 
 	public void sendDebug(String line) {
 		DebugMessage msg = new DebugMessage();
 		msg.setMessage(line);
 		this.output.addLast(msg);
+		
+		if (debug) {
+			System.err.println(msg);
+		}
 	}
 
 }

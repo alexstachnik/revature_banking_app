@@ -10,11 +10,13 @@ import com.revature.project0.IO.IORunner;
 import com.revature.project0.IO.StringIO;
 import com.revature.project0.core.BankSQLException;
 import com.revature.project0.core.Password;
+import com.revature.project0.db.DBInterface;
 import com.revature.project0.db.MemoryBackend;
+import com.revature.project0.db.SQL_DB;
 
 public class TestHelper {
 	
-	private MemoryBackend mb;
+	private DBInterface db;
 	private StringBuilder sb;
 	private List<ExpectedOutput> expected;
 	private boolean debug;
@@ -22,10 +24,11 @@ public class TestHelper {
 	public TestHelper() {
 		sb = new StringBuilder();
 		expected = new ArrayList<ExpectedOutput>();
-		mb = new MemoryBackend();
+		db = new SQL_DB();
 		try {
-			mb.truncateTable();
-			mb.makeSuperUser("default", Password.hash("password"));
+			db.connectIfNot();
+			db.truncateTable();
+			db.makeSuperUser("default", Password.hash("password"));
 		} catch (BankSQLException e) {
 			throw new RuntimeException(e);
 		}
@@ -50,18 +53,19 @@ public class TestHelper {
 	
 	public void run() {
 		StringIO io = new StringIO(false,sb.toString());
-		try {
-			new IORunner(mb).run(io);
-		} catch (Exception e) {
-		} finally {
-			for (int i=0;i<expected.size();++i) {
-				DebugMessage m = io.getOutput();
-				if (this.debug) {
-					System.out.println(m);
-				}
+		new IORunner(db).run(io);
+		for (int i=0;i<expected.size();++i) {
+			DebugMessage m = io.getOutput();
+			if (this.debug) {
+				System.out.println(m);
+			}
+			if (expected.get(i) == null) {
+				assertTrue(m==null);
+			} else {
 				assertTrue(expected.get(i).isMatch(m));
 			}
 		}
+		
 	}
 	
 }

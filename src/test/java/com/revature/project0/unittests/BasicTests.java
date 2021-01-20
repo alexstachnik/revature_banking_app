@@ -71,6 +71,7 @@ public class BasicTests {
 		TestHelper helper = new TestHelper();
 		BasicTests.setup(helper);
 		
+		helper.setDebug(true);
 		helper.addCommand("login default password\n");
 		helper.addExpected(new ExpectedOutput(true, false, null));
 		helper.addCommand("balance\n");
@@ -151,6 +152,9 @@ public class BasicTests {
 		
 		helper.addCommand("logout\n");
 		helper.addExpected(new ExpectedOutput(true, false, null));
+		
+		helper.addCommand("quit\n");
+		helper.addExpected(new ExpectedOutput(true,false,null));
 		
 		
 		helper.run();
