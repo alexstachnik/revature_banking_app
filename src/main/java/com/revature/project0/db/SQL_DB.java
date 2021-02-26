@@ -31,7 +31,10 @@ public class SQL_DB implements DBInterface {
 			return;
 		}
 		try {
-			conn = DriverManager.getConnection("jdbc:oracle:thin:@mydb.cdqjre4nzaux.us-east-1.rds.amazonaws.com:1521:ORCL", "admin", "congrats-unlovely-wiry");
+			String connectionStr = System.getenv("connectionString");
+			String username = System.getenv("username");
+			String password = System.getenv("password");
+			conn = DriverManager.getConnection(connectionStr, username, password);
 		} catch (SQLException e) {
 			throw new BankSQLException("SQL Error connecting",e);
 		}

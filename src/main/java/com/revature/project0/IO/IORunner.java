@@ -256,7 +256,7 @@ public class IORunner {
 		} else {
 			throw new CommandException("Specify whether user is superuser");
 		}
-		this.state.updateUser(username,password,isSuperuser);
+		this.state.updateUser(username,Password.hash(password),isSuperuser);
 		this.userio.sendSuccess("User updated");
 	}
 
